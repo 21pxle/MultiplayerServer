@@ -754,6 +754,7 @@ public class Client extends Application {
 
     public void initGame() throws FileNotFoundException {
         //Text Area, Text Field, and Buttons
+        stage.setTitle("Game: " + username);
         ScrollPane pane = new ScrollPane(textArea);
         AnchorPane.setLeftAnchor(pane, 10d);
         AnchorPane.setTopAnchor(pane, 10d);
@@ -919,6 +920,7 @@ public class Client extends Application {
 
     public void initDisplay(int size) {
         display.setResizable(false);
+        display.setTitle("Display: " + username);
         display.setWidth(800);
         display.setHeight(600);
 
