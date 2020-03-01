@@ -88,8 +88,6 @@ public class Client extends Application {
 
         txtHost.setPromptText("Host Name");
         txtPort.setPromptText("Port Number (0-65535)");
-        txtHost.setText("127.0.0.1");
-        txtPort.setText("5401");
         textFieldUsername.setPromptText("Username");
         connectButton.setOnAction(e -> connectToServer());
         textFieldUsername.setOnKeyPressed(e -> {

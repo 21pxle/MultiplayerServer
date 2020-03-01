@@ -59,7 +59,6 @@ public class Server extends Application {
         Button readyButton = new Button("Ready");
         ScrollPane scrollPane = new ScrollPane(textArea);
         textArea.setWrapText(true);
-        txtPort.setText("5401");
 
 
         Task<Void> task = new Task<>() {
