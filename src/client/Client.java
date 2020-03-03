@@ -377,7 +377,6 @@ public class Client extends Application {
                                     writer.println(username + "\thas connected.\tC");
                                     writer.flush();
                                     connected = true;
-                                    new JFXPanel();
                                     Platform.runLater(() -> {
                                         textFieldUsername.setEditable(false);
                                         stage.setTitle("Chat: " + username);
