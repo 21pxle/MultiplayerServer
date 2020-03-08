@@ -11,7 +11,6 @@ import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.concurrent.Task;
-import javafx.embed.swing.JFXPanel;
 import javafx.geometry.Insets;
 import javafx.scene.Group;
 import javafx.scene.Scene;
@@ -32,7 +31,8 @@ import misc.TwoKeyMap;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -87,7 +87,7 @@ public class Client extends Application {
         textArea.setWrapText(true);
 
         txtHost.setPromptText("Host Name");
-        txtPort.setPromptText("Port Number (0-65535)");
+        txtPort.setPromptText("Port Number (1-65535)");
         textFieldUsername.setPromptText("Username");
         connectButton.setOnAction(e -> connectToServer());
         textFieldUsername.setOnKeyPressed(e -> {
@@ -211,7 +211,7 @@ public class Client extends Application {
             String address = txtHost.getText();
             try {
                 username = textFieldUsername.getText();
-                if (username.length() >= 20 || !username.matches("^[\\w\\-\\s]+$")) {
+                if (username.length() >= 20 || !username.matches("^[\\p{L}\\-\\s]+$")) {
                     throw new IllegalArgumentException();
                 }
                 int port = Integer.parseInt(txtPort.getText());
@@ -377,7 +377,6 @@ public class Client extends Application {
                                     writer.println(username + "\thas connected.\tC");
                                     writer.flush();
                                     connected = true;
-                                    new JFXPanel();
                                     Platform.runLater(() -> {
                                         textFieldUsername.setEditable(false);
                                         stage.setTitle("Chat: " + username);
@@ -468,6 +467,7 @@ public class Client extends Application {
                                                 alert.initModality(Modality.WINDOW_MODAL);
                                                 alert.show();
                                             });
+                                            selectedCards.clear();
                                         }
                                     }
                                     if (turns == 0 && startPlayer != null && cardList.size() == 1
@@ -483,6 +483,7 @@ public class Client extends Application {
                                         alert.initModality(Modality.WINDOW_MODAL);
                                         alert.show();
                                     });
+                                    selectedCards.clear();
                                 }
                                 break;
                             //Display all interfaces.
@@ -553,15 +554,30 @@ public class Client extends Application {
                                                 Integer.parseInt(data[0]), 1)).play();
                                 break;
                             case "MH":
-                                Timeline timeline4 = new Timeline();
-                                timeline4.getKeyFrames().add(
-                                        AnimationHelper.animate(userInterfaces.getValueFromKey1(data[0]).healthProperty(),
-                                                Integer.parseInt(data[1]), 1)
-                                );
-                                timeline4.play();
-                                if (username.equals(data[0])) {
-                                    writer.println(data[0] + "\t" + data[1] + "\tRD\t" + ListExtension.cardListToString(cards.get()) + "\t" + username);
-                                    writer.flush();
+                                if (data.length > 3) {
+                                    Timeline timeline4 = new Timeline();
+                                    timeline4.getKeyFrames().add(
+                                            AnimationHelper.animate(userInterfaces.getValueFromKey1(data[0]).healthProperty(),
+                                                    Integer.parseInt(data[1]), 1)
+                                    );
+                                    timeline4.play();
+                                    if (username.equals(data[3])) {
+                                        writer.println(data[0] + "\t" + data[1] + "\tRD\t"
+                                                + ListExtension.cardListToString(userInterfaces.getValueFromKey1(data[0]).getCards())
+                                                + "\t" + username + "\tS");
+                                        writer.flush();
+                                    }
+                                } else {
+                                    Timeline timeline4 = new Timeline();
+                                    timeline4.getKeyFrames().add(
+                                            AnimationHelper.animate(userInterfaces.getValueFromKey1(data[0]).healthProperty(),
+                                                    Integer.parseInt(data[1]), 1)
+                                    );
+                                    timeline4.play();
+                                    if (username.equals(data[0])) {
+                                        writer.println(data[0] + "\t" + data[1] + "\tRD\t" + ListExtension.cardListToString(cards.get()) + "\t" + username);
+                                        writer.flush();
+                                    }
                                 }
                                 break;
                                 //Modify Failure
@@ -831,6 +847,11 @@ public class Client extends Application {
 
         stage.setScene(game);
 
+        stage.setOnCloseRequest(e -> {
+            writer.println(username + "\t\tQ\t" + ListExtension.cardListToString(cards));
+            writer.flush();
+        });
+
         btnPutCards.setOnAction(e -> {
             for (int i = 0; i < cards.size(); i++) {
                 boolean selected = checkBoxes.get(i).getSelected();
@@ -920,9 +941,9 @@ public class Client extends Application {
 
     public void initDisplay(int size) {
         display.setResizable(false);
-        display.setTitle("Display: " + username);
         display.setWidth(800);
         display.setHeight(600);
+        display.setTitle("Display: " + username);
 
         Text bsText = new Text("Baloney Sandwich!");
         bsText.setFont(Font.font(50));

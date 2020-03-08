@@ -3,20 +3,25 @@ package server;
 import client.Card;
 import client.Deck;
 import client.UserInterface;
-import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import misc.ListExtension;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -41,6 +46,8 @@ public class Server extends Application {
             ", practice makes perfect.", ", don't let your hopes down.",
             ", maybe if we can resurrect you, you might have another shot.",
             ", the times are tough...", ", keep calm and carry on.", ", I know... it's OK buddy.");
+    private List<String> quitMessagesList = List.of(" is a coward.", " quitted... what a coward.", ", I kindly beg you to differ.",
+            " is insta-killed.", " should reconsider.");
     private String startPlayer;
     private String winner = null;
     private int playerCount = 0;
@@ -60,7 +67,6 @@ public class Server extends Application {
         ScrollPane scrollPane = new ScrollPane(textArea);
         textArea.setWrapText(true);
 
-
         Task<Void> task = new Task<>() {
             @Override
             public Void call() {
@@ -74,8 +80,14 @@ public class Server extends Application {
         startButton.setOnAction(e -> {
             try {
                 int port = Integer.parseInt(txtPort.getText());
-                if (port > 65535 || port < 0) {
+                if (port > 65535 || port <= 0) {
                     throw new IllegalArgumentException();
+                }
+
+                try {
+                    stage.setTitle("Server: " + InetAddress.getLocalHost().getHostAddress() + " at port " + port);
+                } catch (UnknownHostException ex) {
+                    ex.printStackTrace();
                 }
                 Thread start = new Thread(new ServerInit(port));
                 start.start();
@@ -90,6 +102,30 @@ public class Server extends Application {
             }
         });
 
+        txtPort.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER) {
+                try {
+                    int port = Integer.parseInt(txtPort.getText());
+                    if (port > 65535 || port <= 0) {
+                        throw new IllegalArgumentException();
+                    }
+
+                    messageQueue.put(InetAddress.getLocalHost().getHostAddress());
+                    Thread start = new Thread(new ServerInit(port));
+                    start.start();
+
+                    messageQueue.put("Server started...");
+                } catch (IllegalArgumentException | InterruptedException ex) {
+                    try {
+                        messageQueue.put("Invalid Port: Port must be a numeric argument from 1 to 65535.");
+                    } catch (InterruptedException exc) {
+                        exc.printStackTrace();
+                    }
+                } catch (UnknownHostException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
         endButton.setOnAction(e -> {
             try {
                 Thread.sleep(5000);
@@ -147,11 +183,25 @@ public class Server extends Application {
         });
 
         readyButton.setOnAction(e -> {
-            broadcast(users.size() + "\t\tR");
+            if (users.size() > 2 && users.size() < 9) {
+                broadcast(users.size() + "\t\tR");
+            } else if (users.size() < 2) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setHeaderText("Not Enough Users");
+                alert.setContentText("You need " + (2 - users.size()) + " more player(s) to play the game!");
+                alert.initModality(Modality.WINDOW_MODAL);
+                alert.show();
+            } else {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setHeaderText("Too Many Users");
+                alert.setContentText("The server can only support up to 8 players!");
+                alert.initModality(Modality.WINDOW_MODAL);
+                alert.show();
+            }
         });
 
         clearLogButton.setOnAction(e -> textArea.clear());
-        txtPort.setPromptText("Port Number (0-65535)");
+        txtPort.setPromptText("Port Number (1-65535)");
 
         AnchorPane.setTopAnchor(scrollPane, 10d);
         AnchorPane.setLeftAnchor(scrollPane, 10d);
@@ -194,6 +244,7 @@ public class Server extends Application {
 
         AnchorPane pane = new AnchorPane(scrollPane, startButton, endButton, onlineUsersButton, clearLogButton, readyButton, txtPort);
         stage.setScene(new Scene(pane));
+        stage.setTitle("Server");
         stage.setWidth(800);
         stage.setHeight(600);
         stage.show();
@@ -268,7 +319,28 @@ public class Server extends Application {
                                 }
                             }
                             break;
-                        //Draw Card
+                            //Quit
+                        case "Q":
+                            turnQueue.remove(data[0]);
+                            List<Card> cards1 = ListExtension.stringToCardList(data[3]);
+                            broadcast(UserInterfaceHelper.clearCards(data[0]));
+                            Collections.shuffle(cards1);
+                            broadcast(data[0] + "\t\tRD");
+                            if (turnQueue.size() == 1) {
+                                broadcast("[Game]\tCongratulations! " + turnQueue.element() + " has won!\tM");
+                                broadcast("\t\tE");
+                            } else {
+                                deadCards.addAll(cards1);
+                                broadcast(ListExtension.stringListToString(turnQueue) + "\t" + deadCards.size() / turnQueue.size()
+                                        + "\tDCD");
+                                if (data.length > 5) {
+                                    broadcast("[Game]\t" + turnQueue.element() + " can now put down some cards.\tM");
+                                }
+                            }
+                            broadcast(data[0] + "\t0\tMH\t" + turnQueue.element());
+                            broadcast("[Announcement]\t" + data[0] + getQuitMessage() + "\tM");
+                            break;
+                        //Draw client.Card
                         case "DC":
                             Card card = deck.draw();
                             try {
@@ -304,7 +376,7 @@ public class Server extends Application {
                                         Integer.parseInt(data[4]), Integer.parseInt(data[5])));
                                 if (playerCount == users.size()) {
 
-                                    while (deck.size() > 0) {
+                                    while (deck.hasCards()) {
                                         Card cardDC = deck.draw();
                                         List<String> players = new ArrayList<>(users);
                                         Collections.shuffle(players);
@@ -421,7 +493,7 @@ public class Server extends Application {
                                 selectedCards.clear();
                             }
                             break;
-                            //Deck Reset
+                            //client.Deck Reset
                         case "DR":
                             //Fallthrough is intentional.
                             deck = new Deck();
@@ -449,7 +521,25 @@ public class Server extends Application {
                             break;
                         //Recognition of Death
                         case "RD":
-                            if (Integer.parseInt(data[1]) == 0) {
+                            if (data.length > 5) {
+                                playerCount = 0;
+                                if (data[0].equals(data[4])) {
+                                    turnQueue.remove(data[0]);
+                                    List<Card> cards = ListExtension.stringToCardList(data[3]);
+                                    broadcast(UserInterfaceHelper.clearCards(data[0]));
+                                    Collections.shuffle(cards);
+                                    broadcast(data[0] + "\t\tRD");
+                                    if (turnQueue.size() == 1) {
+                                        broadcast("[Game]\tCongratulations! " + turnQueue.element() + " has won!\tM");
+                                        broadcast("\t\tE");
+                                    } else {
+                                        deadCards.addAll(cards);
+                                        broadcast(ListExtension.stringListToString(turnQueue) + "\t" + deadCards.size() / turnQueue.size()
+                                                + "\tDCD");
+                                        broadcast("[Game]\t" + turnQueue.element() + " can now put down some cards.\tM");
+                                    }
+                                }
+                            } else if (Integer.parseInt(data[1]) == 0) {
                                 playerCount = 0;
                                 if (data[0].equals(data[4])) {
                                     turnQueue.remove(data[0]);
@@ -465,9 +555,6 @@ public class Server extends Application {
                                         deadCards.addAll(cards);
                                         broadcast(ListExtension.stringListToString(turnQueue) + "\t" + deadCards.size() / turnQueue.size()
                                                 + "\tDCD");
-                                        if (data.length > 5) {
-                                            broadcast("[Game]\t" + turnQueue.element() + " can now put down some cards.\tM");
-                                        }
                                     }
                                 }
                             }
@@ -520,14 +607,14 @@ public class Server extends Application {
                             break;
                         case "DrC":
                             //Cards
-                            while (deck.size() > 0) {
+                            while (deck.hasCards()) {
                                 Card cardDC = deck.draw();
                                 List<String> players = new ArrayList<>(turnQueue);
                                 Collections.shuffle(players);
                                 broadcast(players.get(0) + "\t" + cardDC.getShortName() + "\tDC");
                             }
                             break;
-                        //Deck Reset
+                        //client.Deck Reset
                         case "INVALID-CARDS":
                             broadcast(data[0] + "\t\tINVALID-CARDS");
                             break;
@@ -553,6 +640,10 @@ public class Server extends Application {
                 }
             }
         }
+    }
+
+    private String getQuitMessage() {
+        return quitMessagesList.get(new Random().nextInt(quitMessagesList.size()));
     }
 
     private void displayBS(String attacker, String defender, int turns) {
@@ -611,7 +702,6 @@ public class Server extends Application {
                         (Calendar.getInstance().get(Calendar.DAY_OF_MONTH) == 1 &&
                                 Calendar.getInstance().get(Calendar.MONTH) == Calendar.APRIL) ?
                                 "Yay, you did it, %s! Oh wait, April Fools!" : "Yay, you did it, %s! Oh wait, nevermind...",
-                        "Yay, you did it, %s! Oh wait, April Fools!",
                         "What if I told you, %s, you're wrong?",
                         "Oh, %s, you thought you can get away with that?"
                 };
@@ -632,6 +722,7 @@ public class Server extends Application {
                         "%s, I suggest you have a party to compensate for %s.", //Defender, Attacker
                         "Poor %s, I think you should stay away from %s.", //Defender, Attacker
                         "%s, did you just get caught red-handed by %s?", //Defender, Attacker
+                        "%s, did you think you could get away with hiding your cards from %s?", //Defender, Attacker
                         "%s, this is what the Baloney Sandwich Master %s is doing.", //Defender, Attacker
                         "Thank you, %s! You just made %s draw the cards.", //Attacker, Defender
                         "You might need to upgrade your insurance against %s, %s.",
@@ -650,16 +741,16 @@ public class Server extends Application {
                         "%s has given to you a nice bundle of birthday cards, %s.",
                         "I see that %s might be hitting a bit too hard on %s.",
                         "You've got this, %s, give a nice punch to %s.",
-                        "You might want to think twice before letting %s call Baloney Sandwich on you, %s." //Attacker, Defender
+                        "You might want to think twice before\nletting %s call Baloney Sandwich on you, %s." //Attacker, Defender
                 };
 
                 int index = random.nextInt(possibleSuccessComments.length);
-                if (index < 12) {
+                if (index < 13) {
                     selectedMessage = String.format(possibleSuccessComments[index], defender, attacker);
                 } else {
                     selectedMessage = String.format(possibleSuccessComments[index], attacker, defender);
                 }
-                selectedMessage = selectedMessage.replaceAll("\n", "");
+                selectedMessage = selectedMessage.replaceAll("\n", " ");
             }
             broadcast(attacker + "\t" + defender + "\tBS\t" + result.equals("Successful!")
                     + "\t" + selectedMessage + "\t" + ListExtension.cardListToString(discardPile) + "\t" + ListExtension.cardListToString(selectedCards));

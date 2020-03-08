@@ -1,5 +1,5 @@
 package client;
-import java.io.Serializable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,11 +33,8 @@ public class Deck {
         return cards.remove(0);
     }
 
-    public int size() {
-        return cards.size();
-    }
 
     public boolean hasCards() {
-        return size() > 0;
+        return cards.size() > 0;
     }
 }

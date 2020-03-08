@@ -1,6 +1,9 @@
 package misc;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class TwoKeyMap<K1, K2, V> {
     private List<MapNode<K1, K2, V>> nodes;
@@ -78,7 +81,7 @@ public class TwoKeyMap<K1, K2, V> {
 
         StringBuilder string = new StringBuilder();
         for (MapNode node : nodes) {
-            string.append("(").append(node.key1).append(",").append(node.key2).append("), ");;
+            string.append("(").append(node.key1).append(",").append(node.key2).append("), ");
         }
         if (string.length() >= 2) {
             string.delete(string.length() - 2, string.length());

@@ -11,7 +11,7 @@ public class UserInterfaceHelper {
         return user + "\t" + ListExtension.cardListToString(cards)  + "\tADD\t" + health + "\t" + maxHealth + "\t" + index;
     }
 
-    public static String modifyBSF(String user,  List<Card> cards, List<Card> defenderCards, int health, List<String> turnQueue) {
+    public static String modifyBSF(String user, List<Card> cards, List<Card> defenderCards, int health, List<String> turnQueue) {
         return user + "\t" + ListExtension.cardListToString(cards) + "\tMF\t" + ListExtension.cardListToString(defenderCards) + "\t" + health +
                 "\t" + ListExtension.stringListToString(turnQueue);
     }

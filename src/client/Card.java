@@ -2,7 +2,9 @@ package client;
 
 import javafx.scene.image.Image;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.Serializable;
 
 public class Card implements Serializable {
     public static final Card ACE_OF_SPADES = new Card("As");
@@ -95,9 +97,7 @@ public class Card implements Serializable {
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof Card) {
-            if (toString().equals(obj.toString())) {
-                return true;
-            }
+            return toString().equals(obj.toString());
         }
         return false;
     }
