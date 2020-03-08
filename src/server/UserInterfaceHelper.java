@@ -7,8 +7,8 @@ import java.util.List;
 
 public class UserInterfaceHelper {
 
-    public static String init(String user, List<Card> cards, int health, int maxHealth, int index) {
-        return user + "\t" + ListExtension.cardListToString(cards)  + "\tADD\t" + health + "\t" + maxHealth + "\t" + index;
+    public static String init(String user, List<Card> cards, int health, int maxHealth, int index, String imgString) {
+        return user + "\t" + ListExtension.cardListToString(cards)  + "\tADD\t" + health + "\t" + maxHealth + "\t" + index + "\t" + imgString;
     }
 
     public static String modifyBSF(String user, List<Card> cards, List<Card> defenderCards, int health, List<String> turnQueue) {

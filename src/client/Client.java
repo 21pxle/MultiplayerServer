@@ -22,6 +22,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -31,13 +32,13 @@ import misc.TwoKeyMap;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.file.Files;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class Client extends Application {
-    private int maxHealth = 200, bsDamage = 4;
+    private int maxHealth = 100, bsDamage = 4;
     private SimpleIntegerProperty health = new SimpleIntegerProperty(maxHealth);
     private List<ImageCheckbox> checkBoxes = new ArrayList<>();
     private HBox cardsDisplay;
@@ -79,8 +80,11 @@ public class Client extends Application {
     @Override
     public void start(Stage stage) {
         this.stage = stage;
+        this.stage.setTitle("Client Login");
         Button connectButton = new Button("Connect");
+        Button setAvatarButton = new Button("Set Avatar");
         Button disconnectButton = new Button("Disconnect");
+        Button changeLogButton = new Button("Tips & Changes");
         Button sendButton = new Button("Send");
         ScrollPane scrollPane = new ScrollPane(textArea);
         textArea.setEditable(false);
@@ -132,6 +136,18 @@ public class Client extends Application {
             }
         });
 
+        changeLogButton.setOnAction(e -> {
+            try {
+                List<String> lines = Files.readAllLines(new File("Updates.txt").toPath());
+                for (String line : lines) {
+                    messageQueue.put(line);
+                }
+                messageQueue.put("");
+            } catch (IOException | InterruptedException ex) {
+                ex.printStackTrace();
+            }
+        });
+
         textField.setOnKeyReleased(e -> {
             if (e.getCode() == KeyCode.ENTER) {
                 if (connected) {
@@ -151,6 +167,30 @@ public class Client extends Application {
             }
         });
 
+        setAvatarButton.setOnAction(e -> {
+            if (!username.isEmpty()) {
+                FileChooser chooser = new FileChooser();
+                chooser.getExtensionFilters().add(
+                        new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg"));
+                File selectedFile = chooser.showOpenDialog(this.stage);
+                String path = selectedFile.getAbsolutePath();
+                if (path.endsWith(".png") || path.endsWith(".jpg")) {
+                    try {
+                        byte[] bytes = Files.readAllBytes(new File(path).toPath());
+                        writer.println(username + "\t" + Base64.getEncoder().encodeToString(bytes) + "\tIM");
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            } else {
+                try {
+                    messageQueue.put("You are not connected.");
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+
         AnchorPane.setLeftAnchor(txtHost, 10d);
         AnchorPane.setTopAnchor(txtHost, 10d);
         txtHost.setPrefWidth(270);
@@ -161,14 +201,24 @@ public class Client extends Application {
         txtPort.setPrefWidth(270);
         txtPort.setPrefHeight(30);
 
-        AnchorPane.setRightAnchor(connectButton, 10d);
+        AnchorPane.setRightAnchor(connectButton, 120d);
         AnchorPane.setTopAnchor(connectButton, 50d);
-        connectButton.setPrefWidth(210);
+        connectButton.setPrefWidth(100);
         connectButton.setPrefHeight(30);
+
+        AnchorPane.setRightAnchor(setAvatarButton, 10d);
+        AnchorPane.setTopAnchor(setAvatarButton, 50d);
+        setAvatarButton.setPrefWidth(100);
+        setAvatarButton.setPrefHeight(30);
+
+        AnchorPane.setRightAnchor(changeLogButton, 120d);
+        AnchorPane.setTopAnchor(changeLogButton, 10d);
+        changeLogButton.setPrefWidth(100);
+        changeLogButton.setPrefHeight(30);
 
         AnchorPane.setRightAnchor(disconnectButton, 10d);
         AnchorPane.setTopAnchor(disconnectButton, 10d);
-        disconnectButton.setPrefWidth(210);
+        disconnectButton.setPrefWidth(100);
         disconnectButton.setPrefHeight(30);
 
         AnchorPane.setLeftAnchor(textField, 10d);
@@ -195,7 +245,7 @@ public class Client extends Application {
         textArea.setPrefHeight(420);
 
         AnchorPane pane = new AnchorPane(txtHost, txtPort, textFieldUsername,
-                connectButton, disconnectButton, textField, sendButton, scrollPane);
+                connectButton, setAvatarButton, changeLogButton, disconnectButton, textField, sendButton, scrollPane);
         AnchorPane.setLeftAnchor(scrollPane, 10d);
         AnchorPane.setTopAnchor(scrollPane, 130d);
         scrollPane.setPrefWidth(760);
@@ -359,6 +409,11 @@ public class Client extends Application {
                                 }
                                 break;
                             case "DCD":
+                                if (turns == 0 && !data[0].contains(startPlayer)) {
+                                    turns = 2;
+                                    hasSelectedNoBS = false;
+                                    requestedCardText.setText("Requested Card: 2");
+                                }
                                 if (data[0].contains(username)) {
                                     writer.println(username + "\t" + data[1] + "\tDCD");
                                     writer.flush();
@@ -383,7 +438,7 @@ public class Client extends Application {
                                     });
                                 }
                                 break;
-                            //Ready - Needs a list of cards.
+                            //Ready
                             case "R":
                                 writer.println(username + "\t" + (52 / Integer.parseInt(data[0])) + "\tDCs");
                                 writer.flush();
@@ -402,6 +457,7 @@ public class Client extends Application {
                                     });
                                 }
                                 break;
+                                //Sort Players
                             case "SP":
                                 List<String> users = new ArrayList<>(ListExtension.stringToStringList(data[1]));
                                 startPlayer = users.get(0);
@@ -414,11 +470,13 @@ public class Client extends Application {
                                     userInterfaces.put(user, i, userInterface);
                                 }
                                 break;
+                                //Transition
                             case "T":
                                 turns += Integer.parseInt(data[0]);
                                 hasSelectedNoBS = false;
                                 requestedCardText.setText("Requested Card: " + new Card(1 + (turns / 2) % 13, 1).getRankName());
                                 break;
+                                //Turn
                             case "TURN":
                                 if (data.length > 3) {
                                     cardList = ListExtension.stringToCardList(data[3]);
@@ -492,21 +550,23 @@ public class Client extends Application {
                                     Platform.runLater(() -> initDisplay(Integer.parseInt(data[1])));
                                 }
                                 break;
+                                //Baloney Sandwich
                             case "BS":
                                 displayBS(data[0], data[1], data[3].equals("true"), data[4], ListExtension.stringToCardList(data[5]), ListExtension.stringToCardList(data[6]));
                                 //Server displays Baloney Sandwich message & disables all Baloney Sandwich and Put Cards buttons.
                                 break;
-                            //Disable Buttons
-                            //Disable Buttons for All
+                            //Recognize Death
                             case "RD":
                                 if (username.equals(data[0])) {
                                     cards.clear();
                                     setDisableTurnButtons(true);
                                 }
                                 break;
+                                //Exit Game
                             case "E":
                                 cards.clear();
                                 //Intentional Fallthrough
+                                //Disable Buttons
                             case "DB":
                                 setDisableTurnButtons(true);
                                 break;
@@ -514,7 +574,7 @@ public class Client extends Application {
                             case "EB":
                                 setDisableTurnButtons(false);
                                 break;
-                            //The error message names say it all.
+                            //Warning Messages
                             case "NOT-YOUR-TURN":
                                 Platform.runLater(() -> {
                                     if (data[0].equals(username)) {
@@ -536,23 +596,28 @@ public class Client extends Application {
                                     alert.show();
                                 }
                                 break;
+                                //Add User Interface
                             case "ADD":
                                 unsortedMap.put(data[0], Integer.parseInt(data[5]),
                                         new UserInterface(data[0],
                                                 ListExtension.stringToCardList(data[1]),
-                                                Integer.parseInt(data[3]), Integer.parseInt(data[4])));
+                                                Integer.parseInt(data[3]), Integer.parseInt(data[4]), (data.length > 6) ? data[6] : ""));
                                 break;
+                                //Remove Card
                             case "RC":
                                 userInterfaces.getValueFromKey1(data[0]).getCards().remove(new Card(data[1]));
                                 break;
+                                //Remove Cards
                             case "RCs":
                                 userInterfaces.getValueFromKey1(data[0]).getCards().removeAll(ListExtension.stringToCardList(data[1]));
                                 break;
+                                //Discard Pile Modification
                             case "DPM":
                                 new Timeline(
                                         AnimationHelper.animate(discardPileSize,
                                                 Integer.parseInt(data[0]), 1)).play();
                                 break;
+                                //Modify Health
                             case "MH":
                                 if (data.length > 3) {
                                     Timeline timeline4 = new Timeline();
@@ -589,13 +654,16 @@ public class Client extends Application {
                                 }
                                 recognizeVictory(ListExtension.stringToStringList(data[5]), ListExtension.stringToCardList(data[3]));
                                 break;
+                                //Recognize Victory
                             case "RV":
                                 recognizeVictory(ListExtension.stringToStringList(data[0]), ListExtension.stringToCardList(data[1]));
                                 break;
+                                //Recognize Victory from Server
                             case "RVS":
                                 List<String> players = ListExtension.stringToStringList(data[0]);
                                 recognizeVictory(players, userInterfaces.getValueFromKey1(players.get(0)).getCards());
                                 break;
+                                //Modify Cards
                             case "MC":
                                 Timeline timeline5 = new Timeline();
                                 timeline5.getKeyFrames().add(
@@ -604,12 +672,14 @@ public class Client extends Application {
                                 );
                                 timeline5.play();
                                 break;
+                                //Modify Successful Baloney Sandwich
                             case "MS":
                                 if (data[0].equals(username)) {
                                     cards.addAll(ListExtension.stringToCardList(data[1]));
                                     health.set(Integer.parseInt(data[3]));
                                 }
                                 break;
+                                //Clear Cards
                             case "CC":
 
                                 Timeline timeline7 = new Timeline();

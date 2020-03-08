@@ -14,10 +14,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import misc.ListExtension;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -37,6 +34,7 @@ public class Server extends Application {
     private List<Card> selectedCards = new ArrayList<>();
     private Queue<String> turnQueue = new ArrayDeque<>();
     private List<String> userList = new ArrayList<>();
+    private Map<String, String> images = new HashMap<>();
     private int noBSCalls = 0;
     private BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>();
     private final List<String> deathMessagesList = List.of(" has unfortunately died...",
@@ -45,11 +43,18 @@ public class Server extends Application {
             ", don't be sad... Have a hug.", ", you will be missed...", "... maybe next time.",
             ", practice makes perfect.", ", don't let your hopes down.",
             ", maybe if we can resurrect you, you might have another shot.",
-            ", the times are tough...", ", keep calm and carry on.", ", I know... it's OK buddy.");
+            ", the times are tough...", ", keep calm and carry on.", ", I know... it's OK buddy.",
+            ", now is the time to look at cute photos of dogs and cats.", ", you have worked very hard.",
+            ", don't give up.", ", you've been a good fighter.");
+
     private List<String> quitMessagesList = List.of(" is a coward.", " quitted... what a coward.", ", I kindly beg you to differ.",
-            " is insta-killed.", " should reconsider.");
+            " is insta-killed.", " should reconsider.", " made the dumbest decision.", " committed suicide.", " disappeared without a trace.",
+            ", stop inviting people to quit!", " has won the Darwin Award!", ", where did you go?", ", I don't think you could run away from death.",
+            ", stop hurting yourself!", " tried to escape.", " has won the game... Oh wait, nevermind!", " should stop quitting games!",
+            ", you should have played Electric Field Hockey instead!", ", stop being so impatient!", ", I'm pretty sure quitting will get you mercilessly killed.",
+            " took the easy way out!", ", that is not professional!", ", take a look at what you've done!", ", you thought you could get away with quitting.",
+            ", you've given up your right to rejoin.", ", you might have embarrassed yourself...");
     private String startPlayer;
-    private String winner = null;
     private int playerCount = 0;
     private Stack<Card> deadCards = new Stack<>();
 
@@ -126,6 +131,9 @@ public class Server extends Application {
                 }
             }
         });
+
+
+
         endButton.setOnAction(e -> {
             try {
                 Thread.sleep(5000);
@@ -183,8 +191,9 @@ public class Server extends Application {
         });
 
         readyButton.setOnAction(e -> {
-            if (users.size() > 2 && users.size() < 9) {
+            if (users.size() >= 2 && users.size() < 9) {
                 broadcast(users.size() + "\t\tR");
+                readyButton.setDisable(true);
             } else if (users.size() < 2) {
                 Alert alert = new Alert(Alert.AlertType.WARNING);
                 alert.setHeaderText("Not Enough Users");
@@ -294,11 +303,16 @@ public class Server extends Application {
                             break;
                         //Disconnect
                         case "D":
+                            images.remove(data[0]);
                             removeUser(data[0]);
                             break;
                         //Message
                         case "M":
                             broadcast(message);
+                            break;
+                            //Image
+                        case "IM":
+                            images.put(data[0], data[1]);
                             break;
                         //Draw Cards
                         case "DCs":
@@ -333,14 +347,12 @@ public class Server extends Application {
                                 deadCards.addAll(cards1);
                                 broadcast(ListExtension.stringListToString(turnQueue) + "\t" + deadCards.size() / turnQueue.size()
                                         + "\tDCD");
-                                if (data.length > 5) {
-                                    broadcast("[Game]\t" + turnQueue.element() + " can now put down some cards.\tM");
-                                }
+                                broadcast("[Game]\t" + turnQueue.element() + " can now put down some cards.\tM");
                             }
                             broadcast(data[0] + "\t0\tMH\t" + turnQueue.element());
-                            broadcast("[Announcement]\t" + data[0] + getQuitMessage() + "\tM");
+                            broadcast("[Game]\t" + data[0] + getQuitMessage() + "\tM");
                             break;
-                        //Draw client.Card
+                        //Draw Card
                         case "DC":
                             Card card = deck.draw();
                             try {
@@ -359,7 +371,7 @@ public class Server extends Application {
                             }
                             broadcast(data[0] + "\t" + users.contains(data[1]) + "\tID");
                             break;
-                        //I initialize the game.
+                        //Initialize the game.
                         case "I":
                             playerCount++;
                             try {
@@ -369,13 +381,14 @@ public class Server extends Application {
                                     startPlayer = data[0];
                                     broadcast("[Game]\t" + startPlayer + " has the Ace of Spades and can therefore go first.\tM");
                                 }
+
                                 broadcast(UserInterfaceHelper.init(data[0],
                                         ListExtension.stringToCardList(data[3]), Integer.parseInt(data[4]), Integer.parseInt(data[5]),
-                                        userList.size()));
-                                interfaces.put(data[0], new UserInterface(data[0], ListExtension.stringToCardList(data[3]),
-                                        Integer.parseInt(data[4]), Integer.parseInt(data[5])));
-                                if (playerCount == users.size()) {
+                                        userList.size(), images.getOrDefault(data[0], "")));
 
+                                interfaces.put(data[0], new UserInterface(data[0], ListExtension.stringToCardList(data[3]),
+                                        Integer.parseInt(data[4]), Integer.parseInt(data[5]), images.getOrDefault(data[0], "")));
+                                if (playerCount == users.size()) {
                                     while (deck.hasCards()) {
                                         Card cardDC = deck.draw();
                                         List<String> players = new ArrayList<>(users);
@@ -414,6 +427,7 @@ public class Server extends Application {
                                 displayBS(data[0], turnQueue.element(), Integer.parseInt(data[1]));
                             }
                             break;
+                            //No Baloney Sandwich
                         case "NBS":
                             if (turnQueue.element().equals(data[0])) {
                                 broadcast(data[0] + "\t\tNOT-YOUR-TURN");
@@ -430,6 +444,7 @@ public class Server extends Application {
                                 }
                             }
                             break;
+                            //Put Ace of Spades
                         case "PAs":
                             discardPile.add(Card.ACE_OF_SPADES);
                             broadcast("[Game]\t" + turnQueue.element() + " has put down the Ace of Spades.\tM");
@@ -444,15 +459,12 @@ public class Server extends Application {
                             broadcast("[Game]\t" + turnQueue.element() + " can now put down some cards.\tM");
                             selectedCards.clear();
                             break;
+                            //Display All Interfaces
                         case "DAI":
                             broadcast(data[0] + "\t" + userList.size() + "\tDAI");
                             break;
-                            //BSS
-                        /*
-                         * writer.println(attacker + "\t" + defender + "\tBSS\t" + ListExtension.cardListToString(cards));
-                         */
+                            //Baloney Sandwich Successful
                         case "BSS":
-                            //BSS
                             noBSCalls = 0;
                             List<Card> list = ListExtension.stringToCardList(data[1]);
                             if (data[5].equals(data[0])) {
@@ -467,12 +479,8 @@ public class Server extends Application {
                                 broadcast("1\t\tT");
                             }
                             break;
+                        //Baloney Sandwich Failed
                         case "BSF":
-                            /*
-                            writer.println(attacker + "\t" + ListExtension.cardListToString(defenderCards) + "\tBSF\t"
-                            + bsDamage * cards.size() + "\t" + ListExtension.cardListToString(cards) + "\t"
-                            + health + "\t" + username);
-                             */
                             if (data[6].equals(data[7])) {
                                 noBSCalls = 0;
                                 broadcast("\t\tEB");
@@ -493,15 +501,15 @@ public class Server extends Application {
                                 selectedCards.clear();
                             }
                             break;
-                            //client.Deck Reset
+                            //Deck Reset
                         case "DR":
                             //Fallthrough is intentional.
                             deck = new Deck();
-                            //Clear DP
+                            //Clear Discard Pile
                         case "CL":
                             discardPile.clear();
                             break;
-                            //Placing Cards
+                            //Placed Cards
                         case "PC":
                             String[] cardTokens = data[1].split(" ");
                             for (String s : cardTokens) {
@@ -559,9 +567,11 @@ public class Server extends Application {
                                 }
                             }
                             break;
+                            //Modify Cards
                         case "MC":
                             broadcast(data[0] + "\t" + data[1] + "\tMC");
                             break;
+                            //Modify Health
                         case "MH":
                             broadcast(data[0] + "\t" + data[1] + "\tMH");
                             break;
@@ -585,6 +595,7 @@ public class Server extends Application {
                                 playerCount = 0;
                             }
                             break;
+                            //Draw Cards - All
                         case "DCA":
                             playerCount++;
                             List<Card> cards = deck.draw(Integer.parseInt(data[1]));
@@ -605,6 +616,7 @@ public class Server extends Application {
                                 e.printStackTrace();
                             }
                             break;
+                            //Draw Card
                         case "DrC":
                             //Cards
                             while (deck.hasCards()) {
@@ -614,7 +626,7 @@ public class Server extends Application {
                                 broadcast(players.get(0) + "\t" + cardDC.getShortName() + "\tDC");
                             }
                             break;
-                        //client.Deck Reset
+                        //Warnings
                         case "INVALID-CARDS":
                             broadcast(data[0] + "\t\tINVALID-CARDS");
                             break;
@@ -828,6 +840,36 @@ public class Server extends Application {
             broadcast("[Announcement]\t" + user + " has disconnected.\tM");
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void broadcast(String... strings) {
+        try {
+            for (PrintWriter writer : clientStreams) {
+                try {
+                    String code = strings[0];
+                    List<String> whitelistedCodes = Arrays.asList("[Game]", "[Announcement]");
+                    if (whitelistedCodes.contains(code)) {
+                        messageQueue.put("Sending Message: " + Arrays.toString(strings));
+                    }
+                    StringBuilder str = new StringBuilder();
+                    for (String s : strings) {
+                        str.append(s).append("\t");
+                    }
+                    str.deleteCharAt(str.length() - 1);
+                    writer.println(str);
+                    writer.flush();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                messageQueue.put("Error Sending to Everyone.");
+            } catch (InterruptedException ex) {
+                ex.printStackTrace();
+            }
         }
     }
 

@@ -1,0 +1,17 @@
+-----------------
+Change Log & Tips
+-----------------
+Tips:
+- Use a 100x100 image if possible, but any square or quasi-square image will not be distorted much.
+- Know how to play the game.
+
+Current Version: 1.1 Alpha
+- Added Ability to Display Images
+- More Death and Quitter Messages
+- Minor Bug Fixes
+
+Version 1.0.1 Alpha:
+- Added Handlers for Quitting Players
+
+Version 1.0 Alpha:
+- Initial Release
