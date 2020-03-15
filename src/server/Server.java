@@ -392,7 +392,7 @@ public class Server extends Application {
                                         Collections.shuffle(players);
                                         broadcast(players.get(0) + "\t" + cardDC.getShortName() + "\tDC");
                                     }
-                                    if (turnQueue.size() != users.size()) {
+                                    if (turnQueue.size() < users.size()) {
                                         Collections.shuffle(userList);
                                         userList.remove(startPlayer);
                                         userList.add(0, startPlayer);
