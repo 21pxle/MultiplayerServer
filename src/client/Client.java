@@ -261,7 +261,7 @@ public class Client extends Application {
             String address = txtHost.getText();
             try {
                 username = textFieldUsername.getText();
-                if (username.length() >= 20 || !username.matches("^[\\p{L}\\-\\s]+$")) {
+                if (username.length() >= 20 || !username.matches("^[0-9\\p{L}\\-\\s]+$")) {
                     throw new IllegalArgumentException();
                 }
                 int port = Integer.parseInt(txtPort.getText());
@@ -576,6 +576,7 @@ public class Client extends Application {
                                 break;
                             //Warning Messages
                             case "NOT-YOUR-TURN":
+                                selectedCards.clear();
                                 Platform.runLater(() -> {
                                     if (data[0].equals(username)) {
                                         Alert alert = new Alert(Alert.AlertType.WARNING);
@@ -629,7 +630,7 @@ public class Client extends Application {
                                     if (username.equals(data[3])) {
                                         writer.println(data[0] + "\t" + data[1] + "\tRD\t"
                                                 + ListExtension.cardListToString(userInterfaces.getValueFromKey1(data[0]).getCards())
-                                                + "\t" + username + "\tS");
+                                                + "\t" + username + "\t" + turns);
                                         writer.flush();
                                     }
                                 } else {
@@ -644,6 +645,15 @@ public class Client extends Application {
                                         writer.flush();
                                     }
                                 }
+                                break;
+                                //Modify Cards
+                            case "MC":
+                                Timeline timeline = new Timeline();
+                                timeline.getKeyFrames().add(
+                                        AnimationHelper.animate(userInterfaces.getValueFromKey1(data[0]).cardsProperty(),
+                                                FXCollections.observableList(ListExtension.stringToCardList(data[1])), 1)
+                                );
+                                timeline.play();
                                 break;
                                 //Modify Failure
                             case "MF":
@@ -662,15 +672,6 @@ public class Client extends Application {
                             case "RVS":
                                 List<String> players = ListExtension.stringToStringList(data[0]);
                                 recognizeVictory(players, userInterfaces.getValueFromKey1(players.get(0)).getCards());
-                                break;
-                                //Modify Cards
-                            case "MC":
-                                Timeline timeline5 = new Timeline();
-                                timeline5.getKeyFrames().add(
-                                        AnimationHelper.animate(userInterfaces.getValueFromKey1(data[0]).cardsProperty(),
-                                                FXCollections.observableList(ListExtension.stringToCardList(data[1])), 1)
-                                );
-                                timeline5.play();
                                 break;
                                 //Modify Successful Baloney Sandwich
                             case "MS":
@@ -908,7 +909,6 @@ public class Client extends Application {
                                 ex.printStackTrace();
                             }
                         });
-                        //Modify Cards
                         writer.println(username + "\t" + ListExtension.cardListToString(cards.get()) + "\tMC");
                         writer.flush();
                     }
