@@ -5,7 +5,10 @@ Tips:
 - Use a 100x100 image if possible, but any square or quasi-square image will not be distorted much.
 - Know how to play the game.
 
-Current Version: 1.1 Alpha
+Current Version: 1.1.1 Alpha
+- Major Bug Fixes
+
+Version 1.1 Alpha
 - Added Ability to Display Images
 - More Death and Quitter Messages
 - Minor Bug Fixes
