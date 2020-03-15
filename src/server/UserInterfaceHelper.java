@@ -36,10 +36,6 @@ public class UserInterfaceHelper {
         return user + "\t" + ListExtension.cardListToString(cards) + "\tRCs";
     }
 
-    public static String modifyCards(String user, List<Card> cards) {
-        return user + "\t" + ListExtension.cardListToString(cards) + "\tMC";
-    }
-
     public static String clearCards(String user) {
         return user + "\t\tCC";
     }

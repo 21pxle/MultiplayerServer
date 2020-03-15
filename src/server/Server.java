@@ -53,7 +53,7 @@ public class Server extends Application {
             ", stop hurting yourself!", " tried to escape.", " has won the game... Oh wait, nevermind!", " should stop quitting games!",
             ", you should have played Electric Field Hockey instead!", ", stop being so impatient!", ", I'm pretty sure quitting will get you mercilessly killed.",
             " took the easy way out!", ", that is not professional!", ", take a look at what you've done!", ", you thought you could get away with quitting.",
-            ", you've given up your right to rejoin.", ", you might have embarrassed yourself...");
+            ", you've given up your right to rejoin.", ", you might have embarrassed yourself...", " will not be missed.");
     private String startPlayer;
     private int playerCount = 0;
     private Stack<Card> deadCards = new Stack<>();
@@ -115,7 +115,6 @@ public class Server extends Application {
                         throw new IllegalArgumentException();
                     }
 
-                    messageQueue.put(InetAddress.getLocalHost().getHostAddress());
                     Thread start = new Thread(new ServerInit(port));
                     start.start();
 
@@ -126,8 +125,6 @@ public class Server extends Application {
                     } catch (InterruptedException exc) {
                         exc.printStackTrace();
                     }
-                } catch (UnknownHostException ex) {
-                    ex.printStackTrace();
                 }
             }
         });
@@ -395,16 +392,13 @@ public class Server extends Application {
                                         Collections.shuffle(players);
                                         broadcast(players.get(0) + "\t" + cardDC.getShortName() + "\tDC");
                                     }
-                                }
-                                if (userList.size() == users.size()) {
-                                    Collections.shuffle(userList);
-                                    //There is a chance when the number of players is not a factor of 52 that the Ace of Spades is in the Discard Pile.
-                                    userList.remove(startPlayer);
-                                    userList.add(0, startPlayer);
                                     if (turnQueue.size() != users.size()) {
+                                        Collections.shuffle(userList);
+                                        userList.remove(startPlayer);
+                                        userList.add(0, startPlayer);
                                         turnQueue.addAll(userList);
+                                        broadcast(startPlayer + "\t" + ListExtension.stringListToString(userList) + "\tSP");
                                     }
-                                    broadcast(startPlayer + "\t" + ListExtension.stringListToString(userList) + "\tSP");
                                 }
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
@@ -544,7 +538,8 @@ public class Server extends Application {
                                         deadCards.addAll(cards);
                                         broadcast(ListExtension.stringListToString(turnQueue) + "\t" + deadCards.size() / turnQueue.size()
                                                 + "\tDCD");
-                                        broadcast("[Game]\t" + turnQueue.element() + " can now put down some cards.\tM");
+                                        if (Integer.parseInt(data[5]) % 2 == 0)
+                                            broadcast("[Game]\t" + turnQueue.element() + " can now put down some cards.\tM");
                                     }
                                 }
                             } else if (Integer.parseInt(data[1]) == 0) {

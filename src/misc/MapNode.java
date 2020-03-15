@@ -22,4 +22,9 @@ public class MapNode<K1, K2, V> {
         }
         return false;
     }
+
+    @Override
+    public String toString() {
+        return "(" + key1 + ", " + key2 + ") -> " + value;
+    }
 }
