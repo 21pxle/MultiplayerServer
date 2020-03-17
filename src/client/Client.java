@@ -106,7 +106,7 @@ public class Client extends Application {
             }
         });
 
-        Task<Void> task = new Task<>() {
+        Task<Void> task = new Task<Void>() {
             @Override
             public Void call() {
                 Platform.runLater(() -> new ClientMessageConsumer(messageQueue, textArea).start());

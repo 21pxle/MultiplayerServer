@@ -37,7 +37,7 @@ public class Server extends Application {
     private Map<String, String> images = new HashMap<>();
     private int noBSCalls = 0;
     private BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>();
-    private final List<String> deathMessagesList = List.of(" has unfortunately died...",
+    private final List<String> deathMessagesList = Arrays.asList(" has unfortunately died...",
             " could have won...", " might do better next time...", "... Aww, don't cry...",
             ", at least I got you a teddy bear...", ", I feel sad now because of you. :(", "... Sorry... :(",
             ", don't be sad... Have a hug.", ", you will be missed...", "... maybe next time.",
@@ -47,7 +47,7 @@ public class Server extends Application {
             ", now is the time to look at cute photos of dogs and cats.", ", you have worked very hard.",
             ", don't give up.", ", you've been a good fighter.");
 
-    private List<String> quitMessagesList = List.of(" is a coward.", " quitted... what a coward.", ", I kindly beg you to differ.",
+    private List<String> quitMessagesList = Arrays.asList(" is a coward.", " quitted... what a coward.", ", I kindly beg you to differ.",
             " is insta-killed.", " should reconsider.", " made the dumbest decision.", " committed suicide.", " disappeared without a trace.",
             ", stop inviting people to quit!", " has won the Darwin Award!", ", where did you go?", ", I don't think you could run away from death.",
             ", stop hurting yourself!", " tried to escape.", " has won the game... Oh wait, nevermind!", " should stop quitting games!",
@@ -72,7 +72,7 @@ public class Server extends Application {
         ScrollPane scrollPane = new ScrollPane(textArea);
         textArea.setWrapText(true);
 
-        Task<Void> task = new Task<>() {
+        Task<Void> task = new Task<Void>() {
             @Override
             public Void call() {
                 Platform.runLater(() -> new ServerMessageConsumer(messageQueue, textArea).start());
